@@ -84,12 +84,37 @@ setInterval(() => refreshAll().catch(() => {}), 3 * 60 * 60 * 1000);
 
 // Scheduler: every 30 s, publish posts whose time has come.
 let busy = false;
+// A sleeping Mac wakes for a few seconds at a time ("dark wake") before the
+// network is back; posting then fails with "fetch failed". So: skip ticks while
+// offline, and put posts that hit a network error back in the queue.
+const NETWORK_ERROR = /fetch failed|ENOTFOUND|ECONNRESET|ETIMEDOUT|EAI_AGAIN|network|timed? ?out/i;
+const MAX_RETRIES = 6;
+const RETRY_MS = 10 * 60 * 1000;
+
+async function online() {
+  try {
+    await fetch('https://graph.facebook.com', { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function tick() {
   if (busy) return;
   busy = true;
   try {
+    if (!(await online())) return;
     for (const post of claimDue(new Date().toISOString())) {
       const { status, results } = await publishPost(post);
+      const retries = (post.results?.system?.retries || 0) + 1;
+      const netFail = Object.values(results).some((r) => !r.ok && NETWORK_ERROR.test(r.error || ''));
+      if (status !== 'done' && netFail && retries <= MAX_RETRIES) {
+        // publishPost skips networks that already succeeded, so a retry never double-posts.
+        updatePost(post.id, { status: 'scheduled', scheduled_at: new Date(Date.now() + RETRY_MS).toISOString(), results: { ...results, system: { ok: false, retries, error: 'Network error, retrying' } } });
+        console.log(`[retry ${retries}/${MAX_RETRIES}] post ${post.id} in 10 min`);
+        continue;
+      }
       updatePost(post.id, { status, results });
     }
   } catch (e) {
