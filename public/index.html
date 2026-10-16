@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SocialHub</title>
+<style>
+  :root { --bg:#0e1117; --card:#171b24; --line:#262c38; --text:#e8ebf1; --mute:#8b93a3; --acc:#22d3ee; --ok:#34d399; --bad:#f87171; --warn:#fbbf24; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background:var(--bg); color:var(--text); }
+  header { display:flex; gap:12px; align-items:center; padding:14px 20px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg); z-index:2; }
+  header h1 { font-size:17px; margin:0 8px 0 0; }
+  .pill { padding:3px 10px; border-radius:99px; font-size:12px; font-weight:600; }
+  .dry { background:#3a2f0b; color:var(--warn); } .live { background:#0d3326; color:var(--ok); }
+  select, input, textarea, button { font:inherit; color:var(--text); background:#0b0e14; border:1px solid var(--line); border-radius:8px; padding:7px 10px; }
+  button { cursor:pointer; background:#1f2532; } button.primary { background:var(--acc); color:#04131a; border:0; font-weight:700; }
+  button:disabled { opacity:.5; cursor:default; }
+  main { display:grid; grid-template-columns: 1.1fr 1fr; gap:18px; padding:18px 20px; }
+  @media (max-width: 960px) { main { grid-template-columns: 1fr; } }
+  section { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; }
+  h2 { font-size:14px; margin:0 0 10px; color:var(--mute); text-transform:uppercase; letter-spacing:.04em; }
+  .lib { display:grid; grid-template-columns:repeat(auto-fill, minmax(104px,1fr)); gap:8px; max-height:340px; overflow:auto; }
+  .tile { position:relative; aspect-ratio:4/5; border-radius:8px; overflow:hidden; border:2px solid transparent; cursor:pointer; background:#000; }
+  .tile img, .tile video { width:100%; height:100%; object-fit:cover; display:block; }
+  .tile.sel { border-color:var(--acc); }
+  .tile .n { position:absolute; top:4px; left:4px; background:var(--acc); color:#04131a; font-weight:800; border-radius:99px; min-width:20px; text-align:center; font-size:12px; }
+  .tile .v { position:absolute; bottom:4px; right:4px; background:#000a; font-size:11px; padding:1px 5px; border-radius:4px; }
+  .drop { border:1px dashed var(--line); border-radius:8px; padding:10px; text-align:center; color:var(--mute); margin-bottom:10px; }
+  .drop.over { border-color:var(--acc); color:var(--acc); }
+  textarea { width:100%; min-height:150px; resize:vertical; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:10px 0; }
+  .net { display:flex; gap:6px; align-items:center; padding:6px 10px; border:1px solid var(--line); border-radius:8px; }
+  .net.off { opacity:.45; }
+  .post { border-top:1px solid var(--line); padding:10px 0; display:grid; grid-template-columns:64px 1fr auto; gap:10px; }
+  .post img, .post video { width:64px; height:80px; object-fit:cover; border-radius:6px; background:#000; }
+  .st { font-size:12px; font-weight:700; } .st.done{color:var(--ok)} .st.failed{color:var(--bad)} .st.partial{color:var(--warn)} .st.scheduled{color:var(--acc)} .st.draft{color:var(--mute)}
+  .res { font-size:12px; color:var(--mute); } .res a { color:var(--acc); }
+  .cap { white-space:pre-wrap; max-height:3.2em; overflow:hidden; color:#c9cfdb; }
+  .hint { color:var(--mute); font-size:12px; }
+  dialog { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>SocialHub</h1>
+  <select id="brand"></select>
+  <button id="newBrand">+ Marka</button>
+  <a href="/stats.html"><button>İstatistikler</button></a>
+  <span id="mode" class="pill"></span>
+  <span class="hint" id="nets"></span>
+</header>
+<main>
+  <div>
+    <section>
+      <h2>İçerik kütüphanesi</h2>
+      <div class="drop" id="drop">Fotoğraf veya videoyu buraya sürükle ya da <label style="color:var(--acc);cursor:pointer">dosya seç<input type="file" id="file" multiple accept="image/jpeg,image/png,video/mp4,video/quicktime" hidden></label></div>
+      <div class="lib" id="lib"></div>
+      <p class="hint">Sıra önemli: seçtiğin sırayla carousel olur. Video için tek dosya seç.</p>
+    </section>
+    <section style="margin-top:18px">
+      <h2>Gönderi oluştur</h2>
+      <textarea id="caption" placeholder="Açıklama metni (etiketler dahil)"></textarea>
+      <div class="row" id="targets"></div>
+      <div class="row">
+        <input id="ytTitle" placeholder="YouTube başlığı (isteğe bağlı)" style="flex:1">
+        <label class="net"><input type="checkbox" id="ai" checked> Yapay zekâ ile üretildi</label>
+      </div>
+      <div class="row">
+        <input type="datetime-local" id="when">
+        <button id="draft">Taslak kaydet</button>
+        <button id="schedule" class="primary">Planla</button>
+        <button id="now">Şimdi paylaş</button>
+      </div>
+      <p class="hint" id="msg"></p>
+    </section>
+  </div>
+  <section>
+    <h2>Takvim ve geçmiş</h2>
+    <div id="posts"></div>
+  </section>
+</main>
+<dialog id="dlg"><form method="dialog">
+  <p>Yeni marka</p>
+  <p><input id="bName" placeholder="Görünen ad (ör. Benim Markam)"></p>
+  <p><input id="bSlug" placeholder="kısa ad (ör. markam)"></p>
+  <p class="hint">Sonra hesap anahtarlarını brands/&lt;kısa ad&gt;.env dosyasına gir.</p>
+  <button value="cancel">Vazgeç</button> <button id="bOk" class="primary" value="ok">Oluştur</button>
+</form></dialog>
+<script>
+const $ = (s) => document.querySelector(s);
+const NETS = { instagram: 'Instagram', facebook: 'Facebook', threads: 'Threads', tiktok: 'TikTok', youtube: 'YouTube' };
+let brands = [], brand = localStorage.getItem('brand') || '', selected = [], library = [];
+
+const api = async (url, opt = {}) => {
+  const r = await fetch(url, { headers: opt.body && !(opt.body instanceof Blob) ? { 'Content-Type': 'application/json' } : {}, ...opt });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.status);
+  return j;
+};
+const isVid = (n) => /\.(mp4|mov)$/i.test(n);
+const fileUrl = (n) => `/files/${brand}/${encodeURIComponent(n)}`;
+const thumb = (n) => isVid(n) ? `<video src="${fileUrl(n)}#t=0.5" muted preload="metadata"></video>` : `<img src="${fileUrl(n)}" loading="lazy">`;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const say = (t, bad) => { $('#msg').textContent = t; $('#msg').style.color = bad ? 'var(--bad)' : 'var(--mute)'; };
+
+async function loadBrands() {
+  brands = await api('/api/brands');
+  if (!brands.find((b) => b.slug === brand)) brand = brands[0]?.slug || '';
+  $('#brand').innerHTML = brands.map((b) => `<option value="${b.slug}" ${b.slug === brand ? 'selected' : ''}>${esc(b.name)}</option>`).join('') || '<option>Önce marka ekle</option>';
+  const b = brands.find((x) => x.slug === brand);
+  $('#nets').textContent = b ? 'Bağlı: ' + (Object.entries(b.networks).filter(([, v]) => v).map(([k]) => NETS[k]).join(', ') || 'hiçbiri') : '';
+  $('#targets').innerHTML = Object.entries(NETS).map(([k, label]) =>
+    `<label class="net ${b?.networks[k] ? '' : 'off'}" title="${b?.networks[k] ? '' : 'Bu marka için anahtar girilmemiş'}"><input type="checkbox" data-net="${k}" ${b?.networks[k] ? 'checked' : ''}> ${label}</label>`).join('');
+}
+
+async function loadLibrary() {
+  if (!brand) { $('#lib').innerHTML = ''; return; }
+  library = await api(`/api/library?brand=${brand}`);
+  selected = selected.filter((n) => library.find((f) => f.name === n));
+  $('#lib').innerHTML = library.map((f) => {
+    const i = selected.indexOf(f.name);
+    return `<div class="tile ${i >= 0 ? 'sel' : ''}" data-name="${esc(f.name)}">${thumb(f.name)}${i >= 0 ? `<span class="n">${i + 1}</span>` : ''}${isVid(f.name) ? '<span class="v">video</span>' : ''}</div>`;
+  }).join('') || '<p class="hint">Kütüphane boş.</p>';
+}
+
+function statusText(p) {
+  return { draft: 'Taslak', scheduled: 'Planlandı', publishing: 'Paylaşılıyor…', done: 'Paylaşıldı', partial: 'Kısmen paylaşıldı', failed: 'Başarısız' }[p.status] || p.status;
+}
+
+async function loadPosts() {
+  if (!brand) { $('#posts').innerHTML = ''; return; }
+  const posts = await api(`/api/posts?brand=${brand}`);
+  $('#posts').innerHTML = posts.map((p) => {
+    const when = p.scheduled_at ? new Date(p.scheduled_at).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+    const res = Object.entries(p.results || {}).map(([n, r]) =>
+      `${NETS[n] || n}: ${r.ok ? (r.dryRun ? 'deneme modu' : r.url ? `<a href="${esc(r.url)}" target="_blank">açık</a>` : 'tamam') : `<span style="color:var(--bad)">${esc(r.error || 'hata')}</span>`}${r.note && !r.dryRun ? ` (${esc(r.note)})` : ''}`).join(' · ');
+    const nets = Object.keys(NETS).filter((n) => p.targets[n]).map((n) => NETS[n]).join(', ');
+    const editable = !['publishing', 'done'].includes(p.status);
+    return `<div class="post">${thumb(p.media[0])}
+      <div><div><span class="st ${p.status}">${statusText(p)}</span> · ${when} · ${p.media.length} dosya · ${nets}</div>
+      <div class="cap">${esc(p.caption)}</div><div class="res">${res}</div></div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <a href="/preview.html?brand=${brand}&id=${p.id}" target="_blank"><button>Önizle</button></a>
+        ${editable ? `<button data-now="${p.id}">Şimdi paylaş</button>` : ''}
+        ${p.status !== 'publishing' ? `<button data-del="${p.id}">Sil</button>` : ''}
+      </div></div>`;
+  }).join('') || '<p class="hint">Henüz gönderi yok.</p>';
+}
+
+const refresh = async () => { try { await loadBrands(); await loadLibrary(); await loadPosts(); } catch (e) { say(e.message, true); } };
+
+$('#brand').onchange = (e) => { brand = e.target.value; localStorage.setItem('brand', brand); selected = []; refresh(); };
+$('#lib').onclick = (e) => {
+  const t = e.target.closest('.tile'); if (!t) return;
+  const n = t.dataset.name, i = selected.indexOf(n);
+  i >= 0 ? selected.splice(i, 1) : selected.push(n);
+  loadLibrary();
+};
+
+async function upload(files) {
+  for (const f of files) {
+    say(`Yükleniyor: ${f.name}`);
+    await api(`/api/library?brand=${brand}&name=${encodeURIComponent(f.name)}`, { method: 'POST', body: f });
+  }
+  say('Yüklendi.'); loadLibrary();
+}
+$('#file').onchange = (e) => upload([...e.target.files]).catch((er) => say(er.message, true));
+const drop = $('#drop');
+drop.ondragover = (e) => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove('over'); upload([...e.dataTransfer.files]).catch((er) => say(er.message, true)); };
+
+function payload(when) {
+  const targets = { ai: $('#ai').checked, title: $('#ytTitle').value.trim() || undefined };
+  document.querySelectorAll('[data-net]').forEach((c) => { targets[c.dataset.net] = c.checked; });
+  return { brand, caption: $('#caption').value, media: selected, targets, scheduled_at: when };
+}
+async function save(when, confirmText) {
+  try {
+    if (!selected.length) throw new Error('Kütüphaneden en az bir dosya seç.');
+    const p = payload(when);
+    if (!Object.keys(NETS).some((n) => p.targets[n])) throw new Error('En az bir platform seç.');
+    if (confirmText && !confirm(confirmText)) return;
+    await api('/api/posts', { method: 'POST', body: JSON.stringify(p) });
+    say(when ? 'Planlandı.' : 'Taslak kaydedildi.');
+    selected = []; $('#caption').value = ''; $('#ytTitle').value = '';
+    refresh();
+  } catch (e) { say(e.message, true); }
+}
+$('#draft').onclick = () => save(null);
+$('#schedule').onclick = () => {
+  const v = $('#when').value;
+  if (!v) return say('Tarih ve saat seç.', true);
+  const d = new Date(v);
+  if (d < new Date()) return say('Geçmiş bir saat seçtin.', true);
+  save(d.toISOString(), `${d.toLocaleString('tr-TR')} için planlansın mı?`);
+};
+$('#now').onclick = () => save(new Date().toISOString(), 'Bu gönderi seçili platformlarda ŞİMDİ paylaşılsın mı?');
+$('#posts').onclick = async (e) => {
+  const now = e.target.dataset.now, del = e.target.dataset.del;
+  try {
+    if (now && confirm('Bu gönderi şimdi paylaşılsın mı?')) await api(`/api/posts/${now}/publish-now`, { method: 'POST' });
+    if (del && confirm('Bu gönderi listeden silinsin mi? (Yayınlanmış gönderiler platformlardan silinmez.)')) await api(`/api/posts/${del}`, { method: 'DELETE' });
+    loadPosts();
+  } catch (er) { say(er.message, true); }
+};
+$('#newBrand').onclick = () => $('#dlg').showModal();
+$('#bOk').onclick = async (e) => {
+  e.preventDefault();
+  try {
+    await api('/api/brands', { method: 'POST', body: JSON.stringify({ slug: $('#bSlug').value.trim(), name: $('#bName').value.trim() }) });
+    brand = $('#bSlug').value.trim(); localStorage.setItem('brand', brand);
+    $('#dlg').close(); refresh();
+  } catch (er) { alert(er.message); }
+};
+
+api('/api/status').then((s) => { $('#mode').textContent = s.dryRun ? 'DENEME MODU: hiçbir şey paylaşılmaz' : 'CANLI'; $('#mode').className = 'pill ' + (s.dryRun ? 'dry' : 'live'); });
+refresh();
+setInterval(loadPosts, 15000);
+</script>
+</body>
+</html>

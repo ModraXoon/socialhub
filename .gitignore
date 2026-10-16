@@ -1,0 +1,10 @@
+.env
+brands/*.env
+!brands/_template.env
+node_modules
+data/
+library/
+*.log
+.DS_Store
+# local brand artwork
+public/*-icon-1024.png

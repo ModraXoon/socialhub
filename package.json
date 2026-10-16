@@ -1,0 +1,19 @@
+{
+  "name": "socialhub",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local multi-brand social media scheduler (Instagram, Facebook Page, Threads, TikTok, YouTube)",
+  "type": "module",
+  "scripts": {
+    "start": "node --no-warnings server.mjs",
+    "auth:youtube": "node --no-warnings auth-youtube.mjs",
+    "setup:meta": "node --no-warnings meta-setup.mjs",
+    "auth:tiktok": "node --no-warnings auth-tiktok.mjs",
+    "auth:threads": "node --no-warnings auth-threads.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2"
+  }
+}
